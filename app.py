@@ -21,7 +21,8 @@ def home():
         f'/api/v1.0/precipitation<br/>'
         f'/api/v1.0/stations<br/>'
         f'/api/v1.0/tobs<br/>'
-        f'/api/v1.0/<start>')
+        f'/api/v1.0/<start><br/>'
+        f'/api/v1.0/<start>/<end>')
 
 
 
@@ -40,6 +41,7 @@ def prcp():
 def station_name():
     stations = session.query(station.station).all()
     station_list = [{"Station Name":station[0]}for station in stations]
+    session.close()
     return jsonify(station_list)
 
 @app.route('/api/v1.0/tobs')
@@ -51,16 +53,24 @@ def tobs_flask():
     temp_obs = session.query(measurement.station, measurement.date, measurement.tobs).\
     filter(measurement.station==station_count[0][0], measurement.date>=start_obs).all()
     temp_list = [{"Station":temps[0], "Date":temps[1], "Temp (F)":temps[2]}for temps in temp_obs]
+    session.close()
     return jsonify(temp_obs)
 
 @app.route('/api/v1.0/<start>')
 def starts(start):
-    selected = session.query(measurement.station, measurement.date, measurement.tobs).\
+    selects = session.query(func.min(measurement.tobs),func.max(measurement.tobs), func.avg(measurement.tobs)).\
     filter(measurement.date>=start).all()
-    selected_list = [{"Station":temps[0], "Date":temps[1], "Temp (F)":temps[2]}for temps in temp_obs]
-    return jsonify(selected_list)
+    list = {'Minimum temp recorded':selects[0][0], 'Max temp recorded':selects[0][1], 'Avg temp recorded':round(selects[0][2], 2)}
+    session.close()
+    return jsonify(list)
 
-
+@app.route('/api/v1.0/<start>/<end>')
+def start_end(start,end):
+    analysis = session.query(func.min(measurement.tobs),func.max(measurement.tobs), func.avg(measurement.tobs)).\
+    filter(measurement.date>=start, measurement.date<=end).all()
+    results = {'Minimum temp recorded':analysis[0][0], 'Max temp recorded':analysis[0][1], 'Avg temp recorded':round(analysis[0][2], 2)}
+    session.close()
+    return jsonify(results)
 
 if __name__ == "__main__":
     app.run(debug=True)
